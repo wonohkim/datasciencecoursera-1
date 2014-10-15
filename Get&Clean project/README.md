@@ -7,11 +7,11 @@ This code can be used to organize the raw data from the Samsung Galaxy S II UCI 
 The entire code can be run by entering source(“run_analysis.R”) when both the run_analysis.R and the Samsung Galaxy S II UCI HAR dataset are present on the working directory.
 
 ###The code is divided in five parts:
-* 1) Reads and merges all the train and the test datasets into a single data set.
-* 2) Extracts the measurements on the mean and standard deviation for each measurement.
-* 3) Assigns the descriptive activity names to the activities variable in the data set.
-* 4) Labels the data set with descriptive variable names.
-* 5) Create a tidy data set with the average of each variable for each activity and each subject.
+1. Reads and merges all the train and the test datasets into a single data set.
+2. Extracts the measurements on the mean and standard deviation for each measurement.
+3. Assigns the descriptive activity names to the activities variable in the data set.
+4. Labels the data set with descriptive variable names.
+5. Create a tidy data set with the average of each variable for each activity and each subject.
 
 ----------//----------//----------//----------//----------//----------//----------//----------//
 
