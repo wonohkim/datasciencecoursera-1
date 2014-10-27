@@ -1,0 +1,270 @@
+---
+title: "Analysis of U.S. weather event types reveals tornadoes and flashfloods as the most harmful events"
+output:
+  html_document:
+    keep_md: yes
+---
+### 1. Synopsis  
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities, resulting in fatalities, injuries, and property damage. Preventing such outcomes to the extent possible is a key concern in term of policy planning. This report aims to identify the most harmful weather events across the U.S. in order to determine the best allocation of resources and prevention policies. This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, which tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.  
+
+This study found that the weather event types that are more harmful across the U.S. for the population health are *tornado, excessive heat, flash flood, lightning, rip current, thunderstorm wind and hurricane/typhoon*, while those with the greatest economic consequences are *hail, flash flood, flood, tornado, thunderstorm wind and tstm wind*. Of these, tornadoes are clearly the weather event resulting in more injuries and fatalities, while tornadoes, flash floods and thunderstorm winds result in the most economic costs, with the flash floods leading this category. Even though with reduced economic costs by comparison, hails were found to be the weather events which causes more crop damages.
+
+### 2. Data processing
+#### 2.1 Loading packages  
+The following packages were used for this report:  
+
+- lubridate  
+- reshape  
+- ggplot2
+
+As such, they were loaded  into the R environment before starting the data processing and analysis
+``` {r packages}
+library("reshape")
+library("ggplot2")
+suppressPackageStartupMessages(library("lubridate"))
+```
+
+#### 2.2 Loading database file
+The NOAA storm database used for this study can be download from [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The repdata_data_StormData.csv.bz2 file was read into the **R variable "file"**
+```{r open.file, cache=TRUE}
+file<-bzfile("repdata_data_StormData.csv.bz2")
+file<-read.csv(file,stringsAsFactors = FALSE)
+```
+Note: Please ensure that the downloaded file is in the R working directory!  
+
+#### 2.3 NOAA storm database structure
+The database structure was checked before any data processing was performed
+
+``` {r structure, cache=TRUE}
+str(file)
+head(file)
+names(file)
+```  
+
+#### 2.4 Remove unrequired variables  
+The main goal of this report is to identify the most harmful weather events across the U.S.  
+As such, only the variables BGN_DATE, EVTYPE, FATALITIES, INJURIES, PROPDMG and CROPDMG will be used. The **R variable "data"** will be used to store the processed information
+
+``` {r columns}
+data<-file[,c(2,8,23,24,25,27)]
+head(data)
+```
+
+#### 2.5 Date selection   
+The NOAA storm database contains a register of events starting in the year 1950 and ending in November 2011. For the purpose of this study, only the last 10 years will be considered, as these are more complete and represent a better estimate of modern effects for each weather event type (the intrinsic destruction power of each event, weighted by the *dampening effect of on-going prevention policies*)
+
+As such the class of the BGN_DATE variable and the total number of dates were checked.  
+ 
+``` {r date.format}
+class(data$BGN_DATE)
+# Change class to date
+data$BGN_DATE<-as.Date(data$BGN_DATE, format="%m/%d/%Y %H:%M:%S")
+class(data$BGN_DATE)
+```  
+
+With the class of the BGN_DATE variable as date, the last 10 years of the records were selected
+``` {r date.select}
+# Find the last entry of the records
+last.entry<-max(data$BGN_DATE)
+# Take the first entry for the procesed record
+first.entry<-last.entry-years(10)
+# Select only the dates from first.entry until last.entry
+length(unique(data$BGN_DATE))
+data<-data[data$BGN_DATE>=first.entry & data$BGN_DATE<=last.entry,]
+length(unique(data$BGN_DATE))
+min<-min(unique(data$BGN_DATE))
+max<-max(unique(data$BGN_DATE))
+```
+
+The records used are those from `r min` until `r max`
+  
+#### 2.6 Missing values 
+Finally, it's important to notice if there are any missing values in the data
+
+```{r missing}
+sum(is.na(data))
+```
+
+With no missing values, the data is ready for analysis
+
+### 3. Results
+#### 3.1 Across the United States, which types of events are most harmful with respect to population health?
+
+To estimate the most harmful weather event type *- EVTYPE -* on the population health, both fatalities and injuries were considered, as recorded in the variables FATALITIES and INJURIES.
+  
+The harm caused by a specific type of weather event can be understood in two different ways:
+
+- The *average number* of fatalities and injuries cause by each occurrence for a given event type  
+- The *cumulative number* of fatalities and injuries caused by the total occurrences for a given event type
+
+It's clear that a given event type with a higher *average* of caused injuries is expected to be more harmful per occurrence than one with lower average of caused injuries.  However, a fairly harmless event repeated a great number of times can result in a higher number of *total* injuries.  
+
+In this study it will be assumed that it is of the general interest to invest in prevention of the weather events resulting in higher total harm, instead of focusing resources in prevention of more deadly, but rarer, weather events, since the prevention measures in place for one occurrence can dampen the effect of the remaining occurrences. So this report will focus on the second way of understanding the harm caused by a specific type of weather event, by addressing the *cumulative number*  
+
+To find the weather event type that results in higher injuries and fatalities the sum is calculated and saved to the **R variables "injuries" and "fatalities"**
+
+``` {r health.data}
+# Retrive only the required variables
+health<-data[,c(2,3,4)]
+
+# Calculate the sum of injuries
+injuries<-tapply(health$INJURIES,health$EVTYPE,sum) 
+head(injuries)
+
+injuries<-as.data.frame(injuries)
+injuries<-cbind(rownames(injuries),injuries) # Inserts the event names as a variable instead of row name
+rownames(injuries)<-NULL
+head(injuries)
+
+injuries<-cbind(injuries,rep("injuries",nrow(injuries))) #add injury observation
+names(injuries)<-c("event","sum","observation")
+head(injuries)
+
+# Calculate the sum of fatalities
+fatalities<-tapply(health$FATALITIES,health$EVTYPE,sum) 
+head(fatalities)
+
+fatalities<-as.data.frame(fatalities)
+fatalities<-cbind(rownames(fatalities),fatalities) 
+rownames(fatalities)<-NULL
+head(fatalities)
+
+fatalities<-cbind(fatalities,rep("fatalities",nrow(fatalities))) 
+names(fatalities)<-c("event","sum","observation")
+head(fatalities)
+```
+
+Since there are a great number of weather event types recorded, this study was interested in the most harmful events. To do this, the **R variables "injuries" and "fatalities"** were ordered by decreasing number of "sums"
+```{r health.most}
+fatalities<-fatalities[order(fatalities$sum,decreasing=TRUE),]
+head(fatalities)
+
+injuries<-injuries[order(injuries$sum,decreasing=TRUE),]
+head(injuries)
+
+worse.health<-unique(append(as.character(fatalities$event[1:5]),as.character(injuries$event[1:5])))
+worse.health<-tolower(worse.health)
+```
+
+It can be seen that the weather event types that are more harmful for the population health are `r worse.health`  
+  
+#### 3.2 Across the United States, which types of events have the greatest economic consequences?
+
+To estimate the weather event type *- EVTYPE -* with greatest economic consequences, both property and crop damage were considered, as recorded in the variables PROPDMG and CROPDMG.
+  
+As before, to find the weather event type that results it higher property and crop damage the sum is calculated and saved to the **R variables "property" and "crop"**
+
+``` {r economic.data}
+# Retrive only the required variables
+economic<-data[,c(2,5,6)]
+
+# Calculate the sum of property damage
+property<-tapply(economic$PROPDMG,economic$EVTYPE,sum) 
+head(property)
+
+property<-as.data.frame(property)
+property<-cbind(rownames(property),property) 
+rownames(property)<-NULL
+head(property)
+
+property<-cbind(property,rep("property",nrow(property)))
+names(property)<-c("event","sum","observation")
+head(property)
+
+# Calculate the sum of crop damage
+crop<-tapply(economic$CROPDMG,economic$EVTYPE,sum) 
+head(crop)
+
+crop<-as.data.frame(crop)
+crop<-cbind(rownames(crop),crop) 
+rownames(crop)<-NULL
+head(crop)
+
+crop<-cbind(crop,rep("crop",nrow(crop))) 
+names(crop)<-c("event","sum","observation")
+head(crop)
+
+```
+
+Again, since there are a great number of weather event types recorde, this study was interested in the most harmful events. To do this, the **R variables "property" and "crop"** were ordered by decreasing number of "sums"
+```{r economic.most}
+crop<-crop[order(crop$sum,decreasing=TRUE),]
+head(crop)
+
+property<-property[order(property$sum,decreasing=TRUE),]
+head(property)
+
+worse.economic<-unique(append(as.character(crop$event[1:5]),as.character(property$event[1:5])))
+worse.economic<-tolower(worse.economic)
+```
+
+It can be seen that the weather event types that have the greatest economic consequences are `r worse.economic`
+
+#### 3.3 Graphical representation of the results
+In order to better appreciate the results, the information for the most harmful information was saved to the **R variables "econ" and "health"**, which was used to plot the relevant information
+```{r event}
+# Find all the worse events
+econ<-data.frame()
+econ<-rbind(crop[1:5,],property[1:5,])
+econ
+
+health<-data.frame()
+health<-rbind(injuries[1:5,],fatalities[1:5,])
+health
+```
+  
+The data for the weather events most harmful with respect to population health was plotted using the **R variable "health"**
+``` {r health.plot, cache=TRUE}
+plot<-ggplot(health,aes(abbreviate(health$event,3),health$sum))
+plot<-plot + geom_bar(aes(fill = health$observation), position = "dodge", stat="identity")
+plot<-plot + theme_bw()
+plot<-plot + xlab("Weather event type") 
+plot<-plot + ylab("Number of affected people") 
+plot<-plot + ggtitle("Weather events most harmful with respect to population health")
+plot<-plot + scale_fill_discrete("")
+plot
+
+#X-axis legend
+abbreviate(health$event,3)
+```
+
+*Descriptive caption*: The above figure shows the distribution of the number of injuries (red) and fatalities (blue) affected by the most harmful weather event types in repect to the population health. It can be seen that the TOR event (tornadoes) results in more injuries and fatalities than the remaining weather events  
+
+The data for the weather events resulting in the greatest economic consequences was plotted using the **R variable "econ"**
+``` {r econ.plot, cache=TRUE}
+plot<-ggplot(econ,aes(abbreviate(econ$event,3),econ$sum))
+plot<-plot + geom_bar(aes(fill = econ$observation), position = "dodge", stat="identity")
+plot<-plot + theme_bw()
+plot<-plot + xlab("Weather event type") 
+plot<-plot + ylab("Damage cost / $") 
+plot<-plot + ggtitle("Weather events with the greatest economic consequences")
+plot<-plot + scale_fill_discrete("")
+plot
+
+#X-axis legend
+abbreviate(econ$event,3)
+```
+
+*Descriptive caption*: The above figure shows the distribution of the damage in property (blue) and crops (red) by the most harmful weather event types with greatest economic consequences.The results are not as clear as those for population health. It can be seen that the TOR, FLF an THW events (tornadoes, flash floods, thundertorm winds) result greatest property damage. However, the event HAI (hails) retults in the greatest crop damage.  
+
+The total cost was calculated for all, these 4 weather event types by using the ordered **R variables "property" and "crop"**
+```{r cost}
+cost<-rbind(property[1:5,],crop[1:5,])
+cost$event<-as.character(cost$event)
+cost<-tapply(cost$sum,cost$event,sum)
+names(cost)
+cost<-cost[c(5,1,4,3)]
+names(cost)
+cost<-as.data.frame(cbind(rownames(cost),cost))
+rownames(cost)<-NULL
+cost<-cost[order(cost$cost,decreasing=TRUE),]
+names(cost)<-c("event","cost / $")
+cost
+```
+    
+The weather event that results in greatest economic cost is the flash flood, closely followed up by thunderstorm winds
+
+##### R environment details
+``` {r details}
+sessionInfo()
+```
